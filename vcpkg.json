@@ -1,0 +1,22 @@
+{
+  "dependencies" : [ "glfw3", {
+    "name" : "fmt",
+    "version>=" : "11.0.2#1"
+  }, {
+    "name" : "glad",
+    "version>=" : "0.1.36"
+  }, {
+    "name" : "spdlog",
+    "version>=" : "1.14.1"
+  }, {
+    "name" : "imgui",
+    "version>=" : "1.91.0",
+    "features" : [ "glfw-binding", "opengl3-binding", "freetype" ]
+  }, {
+    "name" : "fontconfig",
+    "version>=" : "2.15.0#1"
+  }, {
+    "name" : "tbb",
+    "version>=" : "2021.13.0"
+  } ]
+}

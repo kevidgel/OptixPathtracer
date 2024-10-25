@@ -1,0 +1,36 @@
+# Add source files
+file(GLOB SOURCES
+        "Main.cpp"
+        "RenderBase.cpp"
+        "ShaderProgram.cpp"
+        "TraceHost.cpp"
+)
+file(GLOB HEADERS
+        "RenderBase.hpp"
+        "ShaderProgram.hpp"
+        "TraceHost.hpp"
+)
+file (GLOB TYPE_HEADERS
+        "types/geometry/*.hpp"
+        "types/materials/*.hpp"
+        "types/*.hpp"
+)
+file(GLOB SHADER_SOURCES
+        "${CMAKE_CURRENT_BINARY_DIR}/shaders/Fragment.c"
+        "${CMAKE_CURRENT_BINARY_DIR}/shaders/Vertex.c"
+)
+
+# Add executable
+add_executable(
+        ${PROJECT_NAME}
+        ${SOURCES}
+        ${HEADERS}
+        ${TYPE_HEADERS}
+)
+
+# Include directories
+target_include_directories(
+        ${PROJECT_NAME}
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/types
+)
