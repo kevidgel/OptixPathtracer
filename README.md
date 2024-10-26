@@ -47,6 +47,7 @@ make # or ninja
 
 To run:
 ```bash
+cd $PROJECT_BUILD_PATH/src # This is where the executable is stored
 ./renderer
 
 # NOTE: On devices with NVIDIA Optimus (two devices), OpenGL might use the non-NVIDIA gpu. To fix (at least on Linux)
