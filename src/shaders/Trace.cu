@@ -4,7 +4,7 @@
 
 #include <optix_device.h>
 
-#define SAMPLES_PER_PIXEL 10
+#define SAMPLES_PER_PIXEL 2
 #define MAX_DEPTH 50
 
 OPTIX_BOUNDS_PROGRAM(LambertianSpheres)(const void *geom_data, box3f &prim_bounds, const int prim_id) {

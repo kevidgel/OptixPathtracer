@@ -406,15 +406,51 @@ std::pair<int, int> TraceHost::get_size() {
     return { config.width, config.height };
 }
 
+void TraceHost::increment_camera(CameraActions action, float speed) {
+    float d_seconds = std::chrono::duration_cast<std::chrono::duration<float>>(approx_delta).count();
+    float inc = speed * d_seconds;
+
+    vec3f forward = state.camera.look_at - state.camera.look_from;
+    forward.y = 0.f; // Ignore vertical movement
+    forward = normalize(forward);
+    vec3f right = cross(forward, state.camera.up);
+    right.y = 0.f; // Ignore vertical movement
+    right = normalize(right);
+    switch (action) {
+        case CameraActions::MoveUp:
+            state.camera.look_from.y += inc;
+            state.camera.look_at.y += inc;
+            break;
+        case CameraActions::MoveDown:
+            state.camera.look_from.y -= inc;
+            state.camera.look_at.y -= inc;
+            break;
+        case CameraActions::MoveLeft:
+            state.camera.look_from -= right * inc;
+            state.camera.look_at -= right * inc;
+            break;
+        case CameraActions::MoveRight:
+            state.camera.look_from += right * inc;
+            state.camera.look_at += right * inc;
+            break;
+        case CameraActions::MoveForward:
+            state.camera.look_from += forward * inc;
+            state.camera.look_at += forward * inc;
+            break;
+        case CameraActions::MoveBackward:
+            state.camera.look_from -= forward * inc;
+            state.camera.look_at -= forward * inc;
+            break;
+    }
+    state.launch_params.dirty = true;
+}
+
+
 void TraceHost::resize_window(int width, int height) {
     state.aspect = 1.0f * width / height;
 }
 
 void TraceHost::update_launch_params() {
-    auto current_time = std::chrono::high_resolution_clock::now();
-    auto delta = current_time - prev_time;
-    prev_time = current_time;
-
     // Reflect host camera state
     vec3f camera_pos = state.camera.look_from;
     vec3f camera_d00 = normalize(state.camera.look_at - camera_pos);
@@ -449,6 +485,11 @@ void TraceHost::launch() {
 }
 
 void TraceHost::gl_draw() {
+    auto current_time = std::chrono::high_resolution_clock::now();
+    auto delta = current_time - prev_time;
+    approx_delta = delta;
+    prev_time = current_time;
+
     gl.shader->use();
     launch();
 

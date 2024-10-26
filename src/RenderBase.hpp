@@ -32,9 +32,6 @@ public:
 private:
     struct State {
         GLFWwindow* window;
-        // Vertex buffer object handle
-        // Show wireframe or not
-        bool wireframe = false;
     } state;
 
     TraceHost* optix;

@@ -173,8 +173,27 @@ void RenderBase::init_imgui() {
 
 
 void RenderBase::process_input() {
+    const float move_speed = 5.f;
     if (glfwGetKey(state.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(state.window, true);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveUp, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveDown, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_A) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveLeft, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_D) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveRight, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_W) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveForward, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_S) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::MoveBackward, move_speed);
     }
 }
 

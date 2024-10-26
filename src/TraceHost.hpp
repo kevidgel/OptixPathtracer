@@ -6,14 +6,12 @@
 #define OPTIXPROGRAM_HPP
 
 #include <chrono>
-
-#include "shaders/Trace.cuh"
-
 #include <owl/owl.h>
 #include <optional>
 #include <random>
 #include <vector>
 
+#include "shaders/Trace.cuh"
 #include "ShaderProgram.hpp"
 
 std::optional<std::vector<char>> load_ptx_shader(const char* file_path);
@@ -36,12 +34,22 @@ public:
         const int height;
     };
 
+    enum CameraActions {
+        MoveUp,
+        MoveDown,
+        MoveLeft,
+        MoveRight,
+        MoveForward,
+        MoveBackward,
+    };
+
     TraceHost(const Config& config);
     ~TraceHost();
 
     void init();
 
     void resize_window(int width, int height);
+    void increment_camera(CameraActions action, float delta);
     void update_launch_params();
     std::pair<int, int> get_size();
     void gl_draw();
@@ -89,6 +97,7 @@ private:
         cudaGraphicsResource* cuda_pbo;
     } state;
     std::chrono::high_resolution_clock::time_point prev_time;
+    std::chrono::duration<long, std::ratio<1, 1000000000>> approx_delta;
 };
 
 
