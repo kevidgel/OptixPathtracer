@@ -43,3 +43,12 @@ Make sure to have CUDA Toolkit version 12.6 installed.
 Make sure to have OptiX 7.7 installed. You NEED an NVIDIA GPU that supports this version of OptiX. You can install it here: https://developer.nvidia.com/designworks/optix/downloads/legacy.
 
 The only other dependency is OWL, which is an OptiX API wrapper. You can install it via `git submodule`.
+
+## Sources
+I used a lot of help.
+- https://learnopengl.com/
+- https://raytracing.github.io/
+- https://github.com/owl-project/owl/tree/master/samples
+- https://github.com/ingowald/optix7course
+
+
