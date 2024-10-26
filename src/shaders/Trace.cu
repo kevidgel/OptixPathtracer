@@ -4,7 +4,7 @@
 
 #include <optix_device.h>
 
-#define SAMPLES_PER_PIXEL 16
+#define SAMPLES_PER_PIXEL 10
 #define MAX_DEPTH 50
 
 OPTIX_BOUNDS_PROGRAM(LambertianSpheres)(const void *geom_data, box3f &prim_bounds, const int prim_id) {
@@ -16,7 +16,7 @@ OPTIX_INTERSECT_PROGRAM(LambertianSpheres)() {
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(LambertianSpheres)() {
-    Geometry::Sphere::closest_hit<Geometry::LambertianSpheresGeom>();
+    Geometry::Sphere::closest_hit<Geometry::LambertianSpheresGeom, Material::Lambertian>();
 }
 
 inline __device__
@@ -65,7 +65,7 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
 
     // Build primary rays
     Trace::PerRayData prd;
-    prd.random.init(pixel_id.x, pixel_id.y);
+    prd.random.init(pboOfs, self.launch->frame.id);
 
     vec3f color = 0.f;
     for (int sample_id = 0; sample_id < SAMPLES_PER_PIXEL; sample_id++) {
@@ -74,10 +74,10 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
 
         const vec2f pixel_offset(prd.random(), prd.random());
         const vec2f uv = (vec2f(pixel_id) + pixel_offset) / vec2f(self.pbo_size);
-        const vec3f origin = self.camera_data->pos;
-        const vec3f direction = self.camera_data->dir_00
-            + uv.x * self.camera_data->dir_du
-            + uv.y * self.camera_data->dir_dv;
+        const vec3f origin = self.launch->camera.pos;
+        const vec3f direction = self.launch->camera.dir_00
+            + uv.x * self.launch->camera.dir_du
+            + uv.y * self.launch->camera.dir_dv;
 
         ray.origin = origin;
         ray.direction = normalize(direction);
@@ -86,7 +86,11 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
         color += trace_path(self, ray, prd);
     }
 
-    self.pbo_ptr[pboOfs] = vec4f(color * (1.f / SAMPLES_PER_PIXEL), 1.f);
+    if (self.launch->dirty) {
+        self.pbo_ptr[pboOfs] = vec4f(color * (1.f / SAMPLES_PER_PIXEL), 1.f);
+    } else {
+        self.pbo_ptr[pboOfs] += vec4f(color * (1.f / SAMPLES_PER_PIXEL), 1.f);
+    }
 }
 
 // OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)() {

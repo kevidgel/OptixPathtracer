@@ -12,7 +12,7 @@
 using namespace owl;
 
 namespace Trace {
-    typedef LCG<4> Random;
+    typedef LCG<8> Random;
 
     typedef enum {
         RayScattered,

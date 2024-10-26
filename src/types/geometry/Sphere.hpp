@@ -68,7 +68,7 @@ namespace Geometry {
             return (vec3f) optixTransformPointFromObjectToWorldSpace(P);
         }
 
-        template<typename SpheresGeom>
+        template<typename SpheresGeom, typename Material>
         inline __device__
         static void closest_hit() {
             const int prim_id = optixGetPrimitiveIndex();
@@ -82,7 +82,7 @@ namespace Geometry {
             const vec3f hit_point = ray_org + hit_t * ray_dir;
             const vec3f N = hit_point - to_world(self.sphere.center);
 
-            prd.out.scatter_event = scatter(self.material, hit_point, N, prd) ? Trace::RayScattered : Trace::RayMissed;
+            prd.out.scatter_event = Material::scatter(self.material, hit_point, N, prd) ? Trace::RayScattered : Trace::RayMissed;
         }
 #endif
     };

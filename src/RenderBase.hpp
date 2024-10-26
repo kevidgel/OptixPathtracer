@@ -20,8 +20,8 @@
 class RenderBase {
 public:
     struct Config {
-        const int window_width = 800;
-        const int window_height = 600;
+        const int window_width = 1280;
+        const int window_height = 720;
     } config;
 
     RenderBase(const Config& config);

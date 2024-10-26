@@ -42,7 +42,7 @@ public:
     void init();
 
     void resize_window(int width, int height);
-    void set_camera();
+    void update_launch_params();
     std::pair<int, int> get_size();
     void gl_draw();
     void launch();
@@ -84,10 +84,11 @@ private:
         float aspect;
 
         /* Device definitions */
-        OWLBuffer camera_uniform;
+        OWLBuffer launch_params_buffer;
+        LaunchParams launch_params;
         cudaGraphicsResource* cuda_pbo;
     } state;
-    std::chrono::high_resolution_clock::time_point start_time;
+    std::chrono::high_resolution_clock::time_point prev_time;
 };
 
 

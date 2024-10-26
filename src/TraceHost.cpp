@@ -65,10 +65,12 @@ in vec3 ourColor;
 in vec2 TexCoord;
 
 uniform sampler2D texture1;
+uniform float num_samples;
 
 void main()
 {
-    FragColor = texture(texture1, TexCoord);
+    vec4 texColor = texture(texture1, TexCoord);
+    FragColor = texColor / num_samples;
 }
 )";
 
@@ -124,7 +126,7 @@ TraceHost::~TraceHost() {
 
 void TraceHost::init() {
     // Start time
-    start_time = std::chrono::high_resolution_clock::now();
+    prev_time = std::chrono::high_resolution_clock::now();
 
     /********** Generate Scene **********/
     spdlog::info("Generating scene...");
@@ -349,12 +351,12 @@ void TraceHost::init() {
         {"pbo_ptr", OWL_RAW_POINTER, OWL_OFFSETOF(RayGenData, pbo_ptr)},
         {"pbo_size", OWL_INT2, OWL_OFFSETOF(RayGenData, pbo_size)},
         {"world", OWL_GROUP, OWL_OFFSETOF(RayGenData, world)},
-        {"camera_data", OWL_BUFPTR, OWL_OFFSETOF(RayGenData, camera_data)},
-        { /* sentinel: */ nullptr }
+        {"launch", OWL_BUFPTR, OWL_OFFSETOF(RayGenData, launch)},
+        { nullptr }
     };
 
     // Create camera uniform buffer
-    state.camera_uniform = owlDeviceBufferCreate(owl.ctx, OWL_USER_TYPE(CameraData), 1, nullptr);
+    state.launch_params_buffer = owlDeviceBufferCreate(owl.ctx, OWL_USER_TYPE(LaunchParams), 1, nullptr);
 
     owl.ray_gen = owlRayGenCreate(
         owl.ctx,
@@ -379,8 +381,8 @@ void TraceHost::init() {
     owlRayGenSetPointer(owl.ray_gen, "pbo_ptr", dev_ptr);
     owlRayGenSet2i(owl.ray_gen, "pbo_size", config.width, config.height);
     owlRayGenSetGroup(owl.ray_gen, "world", world);
-    owlRayGenSetBuffer(owl.ray_gen, "camera_data", state.camera_uniform);
-    set_camera();
+    owlRayGenSetBuffer(owl.ray_gen, "launch", state.launch_params_buffer);
+    update_launch_params();
 
     spdlog::info("Building programs, pipeline, and SBT");
     owlBuildPrograms(owl.ctx);
@@ -408,34 +410,40 @@ void TraceHost::resize_window(int width, int height) {
     state.aspect = 1.0f * width / height;
 }
 
-void TraceHost::set_camera() {
+void TraceHost::update_launch_params() {
     auto current_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed_time = current_time - start_time;
-    float angle = 30.0f * elapsed_time.count();
+    auto delta = current_time - prev_time;
+    prev_time = current_time;
 
+    // Reflect host camera state
     vec3f camera_pos = state.camera.look_from;
-    float radians = angle * (M_PI / 180.0f);
-
-    camera_pos.x = state.camera.look_from.x * cos(radians) - state.camera.look_from.z * sin(radians);
-    camera_pos.z = state.camera.look_from.x * sin(radians) + state.camera.look_from.z * cos(radians);
-
     vec3f camera_d00 = normalize(state.camera.look_at - camera_pos);
     vec3f camera_ddu = state.camera.cos_fov_y * state.aspect * normalize(cross(camera_d00, state.camera.up));
     vec3f camera_ddv = state.camera.cos_fov_y * normalize(cross(camera_ddu, camera_d00));
     camera_d00 -= 0.5f * camera_ddu;
     camera_d00 -= 0.5f * camera_ddv;
 
-    CameraData camera_data;
-    camera_data.pos = camera_pos;
-    camera_data.dir_00 = camera_d00;
-    camera_data.dir_du = camera_ddu;
-    camera_data.dir_dv = camera_ddv;
+    LaunchParams::Camera camera = {
+        camera_pos,
+        camera_d00,
+        camera_ddu,
+        camera_ddv
+    };
+    state.launch_params.set_camera(camera);
 
-    owlBufferUpload(state.camera_uniform, &camera_data, 0);
+    // Increment frame count
+    if (state.launch_params.dirty) {
+        state.launch_params.frame.id = 1;
+    }
+    else {
+        state.launch_params.frame.id++;
+    }
+    owlBufferUpload(state.launch_params_buffer, &state.launch_params, 0);
+    state.launch_params.dirty = false;
 }
 
 void TraceHost::launch() {
-    set_camera();
+    update_launch_params();
     owlRayGenLaunch2D(owl.ray_gen, config.width, config.height);
     cudaDeviceSynchronize();
 }
@@ -443,6 +451,8 @@ void TraceHost::launch() {
 void TraceHost::gl_draw() {
     gl.shader->use();
     launch();
+
+    gl.shader->set_float("num_samples", static_cast<float>(state.launch_params.frame.id));
 
     // 1. Bind the texture
     glActiveTexture(GL_TEXTURE0);
