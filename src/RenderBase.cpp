@@ -140,7 +140,7 @@ void RenderBase::init_glfw() {
 void RenderBase::init_programs() {
     spdlog::info("Initializing device code...");
     optix = new TraceHost({
-        "shaders/CMakeFiles/TestDeviceCode.dir/Trace.ptx",
+        "shaders/CMakeFiles/TracePtx.dir/Trace.ptx",
         config.window_width,
         config.window_height,
     });
