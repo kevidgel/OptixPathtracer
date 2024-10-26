@@ -22,8 +22,8 @@ To build (You can also use CLion):
 cd $PROJECT_ROOT # This is your installation path
 mkdir build
 cd build
-# Make sure to set your VCPKG_ROOT!
-cmake .. -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake # -GNinja if you want
+# Make sure to set your VCPKG_ROOT and OptiX_ROOT_DIR!
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DOptiX_ROOT_DIR=$OptiX_ROOT_DIR # -G Ninja if you want
 make # or ninja
 ```
 
@@ -36,11 +36,15 @@ __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./renderer
 ```
 
 ## Dependencies
-I use vcpkg for most of my dependencies. They are located in `/vcpkg.json`
+System with OpenGL 4.6 capability. I use `glfw` + `glad`.
 
-Make sure to have CUDA Toolkit version 12.6 installed.
+I use vcpkg for most of my dependencies. Provide vcpkg toolchain file as `-DCMAKE_TOOLCHAIN_FILE` to cmake if needed. They are located in `/vcpkg.json`
 
-Make sure to have OptiX 7.7 installed. You NEED an NVIDIA GPU that supports this version of OptiX. You can install it here: https://developer.nvidia.com/designworks/optix/downloads/legacy.
+Make sure to have CUDA Toolkit version 12.6 installed. 
+You might run into issues with CMake, and may need to specify `-DCMAKE_CUDA_ARCHITECTURES` and `-DCMAKE_CUDA_COMPILER`.
+
+Make sure to have OptiX 7.7 installed. Provide installation path as `-DOptiX_ROOT_DIR` if needed.
+You NEED an NVIDIA GPU that supports this version of OptiX. You can install it here: https://developer.nvidia.com/designworks/optix/downloads/legacy.
 
 The only other dependency is OWL, which is an OptiX API wrapper. You can install it via `git submodule`.
 
