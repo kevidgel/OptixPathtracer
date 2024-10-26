@@ -5,7 +5,7 @@ Very simple implementation of a pathtracer with OpenGL + OptiX 7.7 (via OWL).
 ![OptixPathtracerImage](/OptixPathtracer.png)
 
 ## Motivation
-Currently, the only graphics APIs with hardware raytracing acceleration are Vulkan and DX12, which are cumbersome to setup and develop with.
+Currently, the only graphics APIs with hardware raytracing acceleration are Vulkan, DX12, and NVIDIA's OptiX, and the former two are cumbersome to setup and develop with.
 Of course, they offer much finer grained control and potentially better performance.
 However, using OpenGL + OptiX allows us to achieve near-realtime levels of performance with much less code, allowing for more time spent developing core logic.
 
