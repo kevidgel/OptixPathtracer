@@ -7,8 +7,24 @@ Currently, the only graphics APIs with hardware raytracing acceleration are Vulk
 Of course, they offer much finer grained control and potentially better performance.
 However, using OpenGL + OptiX allows us to achieve near-realtime levels of performance with much less code, allowing for more time spent developing core logic.
 
+## Completed
+
+- [x] GLFW + GLAD for rendering base
+- [x] OptiX + OpenGL interop using pixel buffer unpacking
+- [x] Basic raytracing in one weekend impl with rotating camera
+
+## TODO
+
+- [ ] Figure out a way to load models (either by mapping OpenGL vbos to CUDA buffers, or using CUDA buffers directly). 
+- [ ] User input to move camera + sample accumulation when camera is still.
+- [ ] Importance sampling, better materials, MIS, ...
+
+In the distant future:
+
+- [ ] ReSTIR
+
 ## Installation + Build
-I've only built this on Debian 12. I have no idea if it will build on Windows. It will not build on Macs.
+I've only built this on Debian 12. I have no idea if it will build on Windows. It will not build on MacOS.
 
 To install:
 
