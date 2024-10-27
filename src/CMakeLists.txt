@@ -10,28 +10,51 @@ file(GLOB HEADERS
         "ShaderProgram.hpp"
         "TraceHost.hpp"
 )
-file (GLOB TYPE_HEADERS
+file(GLOB TYPE_HEADERS
         "types/geometry/*.hpp"
         "types/materials/*.hpp"
         "types/*.hpp"
 )
-file(GLOB SHADER_SOURCES
-        "${PROJECT_SOURCE_DIR}/generated/src/shaders/*.hpp"
-)
+
+# Provides SHADER_SOURCES
+add_subdirectory(shaders)
+
+message(STATUS "SOURCES: ${SHADER_SOURCES}")
 
 # Add executable
-add_executable(
-        ${PROJECT_NAME}
+add_executable(${PROJECT_NAME}
         ${SOURCES}
-        ${HEADERS}
-        ${TYPE_HEADERS}
-        ${SHADER_SOURCES}
+)
+
+# Prebuild
+add_dependencies(${PROJECT_NAME}
+        EmbedTracePtx
+)
+
+set_target_properties(${PROJECT_NAME}
+        PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
 )
 
 # Include directories
-target_include_directories(
-        ${PROJECT_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/types
-        PRIVATE ${PROJECT_SOURCE_DIR}/generated/src/shaders
+target_include_directories(${PROJECT_NAME}
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/types
+            ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
+
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            EmbeddedShaders
+            fmt::fmt
+            spdlog::spdlog
+            glad::glad
+            glfw
+            imgui::imgui
+            Freetype::Freetype
+            Fontconfig::Fontconfig
+            TBB::tbb
+            TBB::tbbmalloc
+            owl::owl
 )

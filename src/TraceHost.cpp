@@ -255,7 +255,6 @@ void TraceHost::init() {
     owl.ctx = owlContextCreate(nullptr, 1);
 
     const char* data = reinterpret_cast<const char*>(ShaderSources::trace_ptx_source);
-    std::cout << data << std::endl;
 
     owl.module = owlModuleCreate(owl.ctx, data);
 
