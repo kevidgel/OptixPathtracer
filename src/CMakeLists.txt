@@ -16,8 +16,7 @@ file (GLOB TYPE_HEADERS
         "types/*.hpp"
 )
 file(GLOB SHADER_SOURCES
-        "${CMAKE_CURRENT_BINARY_DIR}/shaders/Fragment.c"
-        "${CMAKE_CURRENT_BINARY_DIR}/shaders/Vertex.c"
+        "${PROJECT_SOURCE_DIR}/generated/src/shaders/*.hpp"
 )
 
 # Add executable
@@ -26,6 +25,7 @@ add_executable(
         ${SOURCES}
         ${HEADERS}
         ${TYPE_HEADERS}
+        ${SHADER_SOURCES}
 )
 
 # Include directories
@@ -33,4 +33,5 @@ target_include_directories(
         ${PROJECT_NAME}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/types
+        PRIVATE ${PROJECT_SOURCE_DIR}/generated/src/shaders
 )

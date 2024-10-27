@@ -1,19 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
-project(renderer)
+project(OptixPathtracer)
 
 set(CMAKE_CXX_STANDARD 20)
-
-# Set slang path
-set(ENV{SLANG_PATH} /opt/slang)
-
-# CUDA config
-set(CMAKE_CUDA_ARCHITECTURES native)
-set(CMAKE_CUDA_COMPILER /usr/local/cuda-12.6/bin/nvcc)
-
-# OptiX config
-set(OptiX_ROOT_DIR /opt/NVIDIA-OptiX-SDK-8.0.0-linux64-x86_64/)
-
-# add_definitions(-D__CUDA_ARCH__)
 
 # Add packages (use vcpkg)
 find_package(TBB CONFIG REQUIRED)
@@ -43,7 +31,13 @@ target_link_libraries(
         PRIVATE ${CUDA_LIBRARIES}
 )
 
+set_target_properties(
+        ${PROJECT_NAME}
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+)
+
 add_dependencies(
         ${PROJECT_NAME}
-        TracePtx
+        EmbedPtx
 )

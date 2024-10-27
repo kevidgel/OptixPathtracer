@@ -15,6 +15,7 @@
 
 #include "ShaderProgram.hpp"
 #include "geometry/Sphere.hpp"
+#include "Trace.ptx.hpp"
 
 const int NUM_VERTICES = 8;
 vec3f vertices[NUM_VERTICES] =
@@ -253,12 +254,10 @@ void TraceHost::init() {
     // Create context + module
     owl.ctx = owlContextCreate(nullptr, 1);
 
-    auto ptx_file_res = load_ptx_shader(config.ptx_source);
-    if (!ptx_file_res.has_value()) {
-        throw std::runtime_error("Failed to load PTX file");
-    }
-    std::vector<char> ptx_file = ptx_file_res.value();
-    owl.module = owlModuleCreate(owl.ctx, ptx_file.data());
+    const char* data = reinterpret_cast<const char*>(ShaderSources::trace_ptx_source);
+    std::cout << data << std::endl;
+
+    owl.module = owlModuleCreate(owl.ctx, data);
 
     // Set sphere type
     OWLVarDecl lambertian_sphere_geom_vars[] = {
@@ -278,54 +277,21 @@ void TraceHost::init() {
     owlGeomTypeSetIntersectProg(lambertian_sphere_geom_type, 0, owl.module, "LambertianSpheres");
     owlGeomTypeSetBoundsProg(lambertian_sphere_geom_type, owl.module, "LambertianSpheres");
 
+    // Build programs
     owlBuildPrograms(owl.ctx);
-    // // Create tri mesh type
-    // OWLVarDecl triangle_geom_vars[] = {
-    //     {"index", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, index)},
-    //     {"vertex", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, vertex)},
-    //     {"color", OWL_FLOAT3, OWL_OFFSETOF(TrianglesGeomData, color)},
-    // };
-    //
-    // OWLGeomType triangles_geom_type = owlGeomTypeCreate(
-    //     owl.ctx,
-    //     OWL_GEOMETRY_TRIANGLES,
-    //     sizeof(TrianglesGeomData),
-    //     triangle_geom_vars,
-    //     3
-    //     );
-    //
-    // owlGeomTypeSetClosestHit(
-    //     triangles_geom_type,
-    //     0,
-    //     owl.module,
-    //     "TriangleMesh"
-    //     );
 
     // Setup input buffers
     OWLBuffer lambertian_spheres_buffer = owlDeviceBufferCreate(owl.ctx, OWL_USER_TYPE(spheres[0]), spheres.size(), spheres.data());
     OWLGeom lambertian_spheres_geom = owlGeomCreate(owl.ctx, lambertian_sphere_geom_type);
     owlGeomSetPrimCount(lambertian_spheres_geom, spheres.size());
     owlGeomSetBuffer(lambertian_spheres_geom, "prims", lambertian_spheres_buffer);
-    // OWLBuffer vertex_buffer = owlDeviceBufferCreate(owl.ctx, OWL_FLOAT3, NUM_VERTICES, vertices);
-    // OWLBuffer index_buffer = owlDeviceBufferCreate(owl.ctx, OWL_INT3, NUM_INDICES, indices);
-    //
-    // OWLGeom triangles_geom = owlGeomCreate(owl.ctx, triangles_geom_type);
-    // owlTrianglesSetVertices(triangles_geom, vertex_buffer, NUM_VERTICES, sizeof(vec3f), 0);
-    // owlTrianglesSetIndices(triangles_geom, index_buffer, NUM_INDICES, sizeof(vec3i), 0);
-    //
-    // owlGeomSetBuffer(triangles_geom, "vertex", vertex_buffer);
-    // owlGeomSetBuffer(triangles_geom, "index", index_buffer);
-    // owlGeomSet3f(triangles_geom, "color", 1.f, 0.f, 0.f);
 
-    // Setup accel structures
-    // OWLGroup triangles_group = owlTrianglesGeomGroupCreate(owl.ctx, 1, &triangles_geom);
-    // owlGroupBuildAccel(triangles_group);
+    // Build acceleration structures
     OWLGeom user_geoms[] = {
         lambertian_spheres_geom,
     };
     OWLGroup spheres_group = owlUserGeomGroupCreate(owl.ctx, 1, user_geoms);
     owlGroupBuildAccel(spheres_group);
-
     OWLGroup world = owlInstanceGroupCreate(owl.ctx, 1, &spheres_group);
     owlGroupBuildAccel(world);
 
