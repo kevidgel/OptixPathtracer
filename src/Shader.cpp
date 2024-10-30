@@ -2,7 +2,7 @@
 // Created by kevidgel on 10/22/24.
 //
 
-#include "ShaderProgram.hpp"
+#include "Shader.hpp"
 
 #include <fstream>
 #include <optional>
@@ -80,7 +80,7 @@ std::optional<GLuint> load_spirv_shader_from_str(GLenum shader_type, const char 
     return std::make_optional(shader);
 }
 
-ShaderProgram::ShaderProgram(const char* vertex_shader_source, const char* fragment_shader_source) {
+Shader::Shader(const char* vertex_shader_source, const char* fragment_shader_source) {
     // Compile shaders and link program
     // auto vertex_shader_res = load_spirv_shader(GL_VERTEX_SHADER, vertex_shader_source);
     // if (!vertex_shader_res.has_value()) {
@@ -139,23 +139,23 @@ ShaderProgram::ShaderProgram(const char* vertex_shader_source, const char* fragm
     glDeleteShader(fragment_shader);
 }
 
-ShaderProgram::~ShaderProgram() {
+Shader::~Shader() {
     spdlog::info("Deleting shader program...");
     glDeleteProgram(program_id);
 }
 
-void ShaderProgram::use() {
+void Shader::use() {
     glUseProgram(program_id);
 }
 
-void ShaderProgram::set_bool(const std::string& name, bool value) const {
+void Shader::set_bool(const std::string& name, bool value) const {
     glUniform1i(glGetUniformLocation(program_id, name.c_str()), (int)value);
 }
 
-void ShaderProgram::set_int(const std::string& name, int value) const {
+void Shader::set_int(const std::string& name, int value) const {
     glUniform1i(glGetUniformLocation(program_id, name.c_str()), value);
 }
 
-void ShaderProgram::set_float(const std::string& name, float value) const {
+void Shader::set_float(const std::string& name, float value) const {
     glUniform1f(glGetUniformLocation(program_id, name.c_str()), value);
 }

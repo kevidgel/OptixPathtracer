@@ -2,6 +2,8 @@
 // Created by kevidgel on 10/24/24.
 //
 
+#pragma once
+
 #ifndef RAY_HPP
 #define RAY_HPP
 
@@ -11,7 +13,7 @@
 #ifdef __CUDA_ARCH__
 using namespace owl;
 
-namespace Trace {
+namespace RayData {
     typedef LCG<8> Random;
 
     typedef enum {
@@ -20,7 +22,7 @@ namespace Trace {
         RayMissed,
     } ScatterEvent;
 
-    struct PerRayData {
+    struct Record {
         Random random;
         struct {
             ScatterEvent scatter_event;

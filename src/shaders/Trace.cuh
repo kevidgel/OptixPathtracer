@@ -21,15 +21,20 @@ struct TrianglesGeomData {
 */
 struct LaunchParams {
     bool dirty = false;
+    int spp = 1; // samples per pixel
+
     struct Camera {
         vec3f pos;
         vec3f dir_00;
         vec3f dir_du;
         vec3f dir_dv;
     } camera;
+
     struct Frame {
         int id = 0;
+        int accum_frames = 0;
     } frame;
+
     void set_camera(const Camera& next) {
         if (next.pos != camera.pos ||
             next.dir_00 != camera.dir_00 ||

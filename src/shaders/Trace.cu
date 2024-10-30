@@ -4,8 +4,8 @@
 
 #include <optix_device.h>
 
-#define SAMPLES_PER_PIXEL 2
-#define MAX_DEPTH 50
+#define SAMPLES_PER_PIXEL 4
+#define MAX_DEPTH 16
 
 OPTIX_BOUNDS_PROGRAM(LambertianSpheres)(const void *geom_data, box3f &prim_bounds, const int prim_id) {
     Geometry::Sphere::bounds<Geometry::LambertianSpheresGeom>(geom_data, prim_bounds, prim_id);
@@ -28,23 +28,36 @@ vec3f miss_color(const Ray& ray) {
 }
 
 inline __device__
-vec3f trace_path(const RayGenData& self, Ray& ray, Trace::PerRayData& prd) {
+vec3f trace_path(const RayGenData& self, Ray& ray, RayData::Record& prd) {
     vec3f accum_attenuation = 1.f;
 
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         traceRay(self.world, ray, prd);
 
-        if (prd.out.scatter_event == Trace::ScatterEvent::RayMissed) {
+        if (prd.out.scatter_event == RayData::ScatterEvent::RayMissed) {
+            // Missed the scene, return background color
             return accum_attenuation * miss_color(ray);
         }
-        else if (prd.out.scatter_event == Trace::ScatterEvent::RayCancelled) {
+        else if (prd.out.scatter_event == RayData::ScatterEvent::RayCancelled) {
+            // Hit light source
             return vec3f(0.f);
         }
         else {
-            const float pdf = 1.0;
+            const float pdf = prd.out.pdf;
             const vec3f brdf = prd.out.attenuation;
 
-            accum_attenuation *= brdf / pdf;
+            const vec3f throughput = brdf / pdf;
+            float roulette_weight =
+                1.0f - clamp(max(max(throughput.x, throughput.y), throughput.z), 0.0f, 1.0f);
+            if (depth <= 3) roulette_weight = 0.f;
+
+            if (prd.random() < roulette_weight) {
+                return vec3f(0.f);
+            }
+
+            vec3f L_o = brdf / pdf;
+            accum_attenuation *= (L_o / (1.0f - roulette_weight));
+
             ray = Ray(
                 prd.out.scattered_origin,
                 prd.out.scattered_direction,
@@ -64,7 +77,7 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
     const int pboOfs = pixel_id.x + self.pbo_size.x * pixel_id.y;
 
     // Build primary rays
-    Trace::PerRayData prd;
+    RayData::Record prd;
     prd.random.init(pboOfs, self.launch->frame.id);
 
     vec3f color = 0.f;
@@ -111,6 +124,6 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
 
 OPTIX_MISS_PROGRAM(Miss)() {
     const MissProgData& self = owl::getProgramData<MissProgData>();
-    Trace::PerRayData& prd = owl::getPRD<Trace::PerRayData>();
-    prd.out.scatter_event = Trace::ScatterEvent::RayMissed;
+    RayData::Record& prd = owl::getPRD<RayData::Record>();
+    prd.out.scatter_event = RayData::ScatterEvent::RayMissed;
 }

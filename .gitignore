@@ -3,6 +3,7 @@ cmake-build-release
 build
 src/shaders/*.slang
 prof
+models
 generated
 .idea
 .vscode

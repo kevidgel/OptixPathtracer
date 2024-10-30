@@ -2,18 +2,20 @@
 file(GLOB SOURCES
         "Main.cpp"
         "RenderBase.cpp"
-        "ShaderProgram.cpp"
+        "Shader.cpp"
         "TraceHost.cpp"
+        "loaders/*.cpp"
 )
 file(GLOB HEADERS
         "RenderBase.hpp"
-        "ShaderProgram.hpp"
+        "Shader.hpp"
         "TraceHost.hpp"
+        "loaders/*.hpp"
 )
 file(GLOB TYPE_HEADERS
-        "types/geometry/*.hpp"
-        "types/materials/*.hpp"
-        "types/*.hpp"
+        "shared_types/geometry/*.hpp"
+        "shared_types/materials/*.hpp"
+        "shared_types/*.hpp"
 )
 
 # Provides SHADER_SOURCES
@@ -40,7 +42,7 @@ set_target_properties(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/types
+            ${CMAKE_CURRENT_SOURCE_DIR}/shared_types
             ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 

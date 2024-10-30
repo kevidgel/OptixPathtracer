@@ -4,14 +4,16 @@
 * @brief Host/device shared Lambertian material definitions.
 */
 
+#pragma once
+
 #ifndef LAMBERTIAN_HPP
 #define LAMBERTIAN_HPP
-
-#include "Ray.hpp"
 
 #include <owl/owl.h>
 #include <owl/common/math/AffineSpace.h>
 #include <owl/common/math/random.h>
+
+#include "Ray.hpp"
 
 using namespace owl;
 
@@ -49,13 +51,12 @@ namespace Material {
         static bool scatter(const Lambertian &material,
                             const vec3f &P,
                             vec3f N,
-                            Trace::PerRayData &prd
+                            RayData::Record &prd
         ) {
-            const vec3f ray_org = optixGetWorldRayOrigin();
-            const vec3f ray_dir = optixGetWorldRayDirection();
+            const vec3f W_o = optixGetWorldRayDirection();
 
             // Flip
-            if (dot(N, ray_dir) > 0.0f) {
+            if (dot(N, W_o) > 0.0f) {
                 N = -N;
             }
             N = normalize(N);
@@ -66,14 +67,15 @@ namespace Material {
             const vec3f B = normalize(cross(N, T));
 
             // T*x + N*y + B*z to convert local (x,y,z) to world
-            const vec3f local_dir = random_in_cosine_weighted_hemisphere(prd.random);
-            const vec3f dir = local_dir.x * T + local_dir.y * N + local_dir.z * B;
+            const vec3f w_i = random_in_cosine_weighted_hemisphere(prd.random);
+            const vec3f W_i = w_i.x * T + w_i.y * N + w_i.z * B;
 
-            // Transform to normal local
+            // Update the record
+            // Note we include the cos(theta) term in the attenuation
             prd.out.scattered_origin = P;
-            prd.out.scattered_direction = dir;
-            prd.out.attenuation = material.albedo;
-            prd.out.pdf = 1.0f / (4.0f * (M_PI));
+            prd.out.scattered_direction = W_i;
+            prd.out.attenuation = (material.albedo / (M_PIf)) * w_i.y;
+            prd.out.pdf = w_i.y / M_PIf;
             return true;
         }
 #endif

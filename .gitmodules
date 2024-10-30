@@ -1,3 +1,6 @@
 [submodule "deps/owl"]
 	path = deps/owl
 	url = https://github.com/owl-project/owl
+[submodule "deps/rapidobj"]
+	path = deps/rapidobj
+	url = https://github.com/guybrush77/rapidobj.git

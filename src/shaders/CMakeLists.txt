@@ -20,11 +20,16 @@ target_link_libraries(
 )
 target_include_directories(TracePtx
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../types
+            ${CMAKE_CURRENT_SOURCE_DIR}/../shared_types
 )
 set_target_properties(TracePtx
         PROPERTIES
             CUDA_PTX_COMPILATION ON
+)
+target_compile_options(TracePtx
+        PRIVATE
+            $<$<CONFIG:DEBUG>:-G>
+            $<$<CONFIG:RELEASE>:--use_fast_math>
 )
 
 # Create directory for generated ptx
@@ -38,7 +43,7 @@ set(PTX_OUTPUT "${PTX_OUTPUT_DIR}/${PTX_NAME}.ptx.hpp")
 add_custom_command(
         OUTPUT ${PTX_OUTPUT}
         COMMAND ${PROJECT_BINARY_DIR}/bin/EmbedShader ${PTX_SOURCE} ${PTX_OUTPUT}
-        DEPENDS EmbedShader TracePtx
+        DEPENDS EmbedShader TracePtx Trace.cu Trace.cuh
         COMMENT "Embedding PTX ${PTX_NAME}"
 )
 message(STATUS "PTX output: ${PTX_OUTPUT}")
@@ -53,6 +58,7 @@ add_library(EmbeddedShaders
         INTERFACE
             ${PTX_OUTPUT}
 )
+
 add_dependencies(EmbeddedShaders EmbedTracePtx)
 target_include_directories(EmbeddedShaders
         INTERFACE

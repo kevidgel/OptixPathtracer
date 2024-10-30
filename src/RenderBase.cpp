@@ -74,8 +74,6 @@ std::optional<std::string> get_default_font() {
 RenderBase::RenderBase(const Config& config)
     : config(config) {}
 
-RenderBase::RenderBase() {}
-
 RenderBase::~RenderBase() {
 }
 
@@ -141,6 +139,7 @@ void RenderBase::init_programs() {
     spdlog::info("Initializing device code...");
     optix = new TraceHost({
         "shaders/CMakeFiles/TracePtx.dir/Trace.ptx",
+        config.model,
         config.window_width,
         config.window_height,
     });
@@ -174,6 +173,7 @@ void RenderBase::init_imgui() {
 
 void RenderBase::process_input() {
     const float move_speed = 5.f;
+    const float rotate_speed = 5.0f;
     if (glfwGetKey(state.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(state.window, true);
     }
@@ -194,6 +194,18 @@ void RenderBase::process_input() {
     }
     else if (glfwGetKey(state.window, GLFW_KEY_S) == GLFW_PRESS) {
         optix->increment_camera(TraceHost::CameraActions::MoveBackward, move_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_UP) == GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::RotateUp, rotate_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_DOWN) ==  GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::RotateDown, rotate_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_LEFT) ==  GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::RotateLeft, rotate_speed);
+    }
+    else if (glfwGetKey(state.window, GLFW_KEY_RIGHT) ==  GLFW_PRESS) {
+        optix->increment_camera(TraceHost::CameraActions::RotateRight, rotate_speed);
     }
 }
 

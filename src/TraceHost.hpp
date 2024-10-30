@@ -2,8 +2,10 @@
 // Created by kevidgel on 10/22/24.
 //
 
-#ifndef OPTIXPROGRAM_HPP
-#define OPTIXPROGRAM_HPP
+#pragma once
+
+#ifndef TRACEHOST_HPP
+#define TRACEHOST_HPP
 
 #include <chrono>
 #include <owl/owl.h>
@@ -12,7 +14,7 @@
 #include <vector>
 
 #include "shaders/Trace.cuh"
-#include "ShaderProgram.hpp"
+#include "Shader.hpp"
 
 std::optional<std::vector<char>> load_ptx_shader(const char* file_path);
 
@@ -30,6 +32,7 @@ class TraceHost {
 public:
     struct Config {
         const char* ptx_source;
+        std::optional<const char*> model;
         const int width;
         const int height;
     };
@@ -41,6 +44,10 @@ public:
         MoveRight,
         MoveForward,
         MoveBackward,
+        RotateLeft,
+        RotateRight,
+        RotateUp,
+        RotateDown
     };
 
     TraceHost(const Config& config);
@@ -61,7 +68,7 @@ private:
     /* OpenGL state */
     struct GLState {
         // Shader program handle
-        ShaderProgram* shader;
+        Shader* shader;
         // Vertex buffer object handle
         GLuint vbo;
         // Vertex array object handle
@@ -100,6 +107,4 @@ private:
     std::chrono::duration<long, std::ratio<1, 1000000000>> approx_delta;
 };
 
-
-
-#endif //OPTIXPROGRAM_HPP
+#endif // TRACEHOST_HPP

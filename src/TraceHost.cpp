@@ -8,85 +8,87 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <fstream>
+#include <imgui.h>
 #include <owl/owl.h>
 #include <optional>
 #include <vector>
+#include <loaders/ObjLoader.hpp>
 #include <spdlog/spdlog.h>
 
-#include "ShaderProgram.hpp"
+#include "Shader.hpp"
 #include "geometry/Sphere.hpp"
 #include "Trace.ptx.hpp"
 
-const int NUM_VERTICES = 8;
-vec3f vertices[NUM_VERTICES] =
-  {
-    { -1.f,-1.f,-1.f },
-    { +1.f,-1.f,-1.f },
-    { -1.f,+1.f,-1.f },
-    { +1.f,+1.f,-1.f },
-    { -1.f,-1.f,+1.f },
-    { +1.f,-1.f,+1.f },
-    { -1.f,+1.f,+1.f },
-    { +1.f,+1.f,+1.f }
-  };
+namespace Screen {
+    const int NUM_VERTICES = 8;
+    vec3f vertices[NUM_VERTICES] = {
+        { -1.f,-1.f,-1.f },
+        { +1.f,-1.f,-1.f },
+        { -1.f,+1.f,-1.f },
+        { +1.f,+1.f,-1.f },
+        { -1.f,-1.f,+1.f },
+        { +1.f,-1.f,+1.f },
+        { -1.f,+1.f,+1.f },
+        { +1.f,+1.f,+1.f }
+    };
 
-const int NUM_INDICES = 12;
-vec3i indices[NUM_INDICES] =
-  {
-    { 0,1,3 }, { 2,3,0 },
-    { 5,7,6 }, { 5,6,4 },
-    { 0,4,5 }, { 0,5,1 },
-    { 2,3,7 }, { 2,7,6 },
-    { 1,5,7 }, { 1,7,3 },
-    { 4,0,2 }, { 4,2,6 }
-  };
+    const int NUM_INDICES = 12;
+    vec3i indices[NUM_INDICES] = {
+        { 0,1,3 }, { 2,3,0 },
+        { 5,7,6 }, { 5,6,4 },
+        { 0,4,5 }, { 0,5,1 },
+        { 2,3,7 }, { 2,7,6 },
+        { 1,5,7 }, { 1,7,3 },
+        { 4,0,2 }, { 4,2,6 }
+    };
 
-const char *vertex_shader_source = R"(
-#version 460 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-layout (location = 2) in vec2 aTexCoord;
+    const char *vertex_shader_source = R"(
+    #version 460 core
+    layout (location = 0) in vec3 aPos;
+    layout (location = 1) in vec3 aColor;
+    layout (location = 2) in vec2 aTexCoord;
 
-out vec3 ourColor;
-out vec2 TexCoord;
+    out vec3 ourColor;
+    out vec2 TexCoord;
 
-void main()
-{
-    gl_Position = vec4(aPos, 1.0);
-    ourColor = aColor;
-    TexCoord = aTexCoord;
+    void main()
+    {
+        gl_Position = vec4(aPos, 1.0);
+        ourColor = aColor;
+        TexCoord = aTexCoord;
+    }
+    )";
+
+    const char *fragment_shader_source = R"(
+    #version 460 core
+    out vec4 FragColor;
+
+    in vec3 ourColor;
+    in vec2 TexCoord;
+
+    uniform sampler2D texture1;
+    uniform float num_samples;
+
+    void main()
+    {
+        vec4 texColor = texture(texture1, TexCoord);
+        FragColor = texColor / num_samples;
+    }
+    )";
+
+    float screen_vertices[] = {
+        // positions          // colors           // texture coords
+         1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+         1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left
+    };
+
+    unsigned int screen_indices[] = {
+        0, 1, 2,   // first triangle
+        0, 2, 3    // second triangle
+    };
 }
-)";
-
-const char *fragment_shader_source = R"(
-#version 460 core
-out vec4 FragColor;
-
-in vec3 ourColor;
-in vec2 TexCoord;
-
-uniform sampler2D texture1;
-uniform float num_samples;
-
-void main()
-{
-    vec4 texColor = texture(texture1, TexCoord);
-    FragColor = texColor / num_samples;
-}
-)";
-
-float screen_vertices[] = {
-    // positions          // colors           // texture coords
-     1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-     1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-    -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-    -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left
-};
-
-unsigned int screen_indices[] = {
-    0, 1, 2,   // first triangle
-    0, 2, 3    // second triangle
-};
 
 std::optional<std::vector<char>> load_ptx_shader(const char* file_path) {
     std::ifstream file(file_path, std::ios::ate);
@@ -162,10 +164,17 @@ void TraceHost::init() {
         Lambertian{vec3f(0.7f, 0.6f, 0.5f)}
     });
 
+    if (config.model.has_value()) {
+        ObjLoader::Config obj_loader_config;
+        obj_loader_config.loadFlags = ObjLoader::LoadFlags::Vertices;
+        ObjLoader obj_loader(obj_loader_config);
+        obj_loader.load(config.model.value());
+    }
+
     /********** Initialize GL **********/
     spdlog::info("Initializing shaders...");
 
-    gl.shader = new ShaderProgram(vertex_shader_source, fragment_shader_source);
+    gl.shader = new Shader(Screen::vertex_shader_source, Screen::fragment_shader_source);
 
     // Generate buffers
     glGenVertexArrays(1, &gl.vao);
@@ -177,16 +186,16 @@ void TraceHost::init() {
     glBindBuffer(GL_ARRAY_BUFFER, gl.vbo);
     glBufferData(
         GL_ARRAY_BUFFER,
-        sizeof(screen_vertices),
-        screen_vertices,
+        sizeof(Screen::screen_vertices),
+        Screen::screen_vertices,
         GL_STATIC_DRAW
         );
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl.ebo);
     glBufferData(
         GL_ELEMENT_ARRAY_BUFFER,
-        sizeof(screen_indices),
-        screen_indices,
+        sizeof(Screen::screen_indices),
+        Screen::screen_indices,
         GL_STATIC_DRAW
         );
 
@@ -254,9 +263,8 @@ void TraceHost::init() {
     // Create context + module
     owl.ctx = owlContextCreate(nullptr, 1);
 
-    const char* data = reinterpret_cast<const char*>(ShaderSources::trace_ptx_source);
 
-    owl.module = owlModuleCreate(owl.ctx, data);
+    owl.module = owlModuleCreate(owl.ctx, reinterpret_cast<const char *>(ShaderSources::trace_ptx_source));
 
     // Set sphere type
     OWLVarDecl lambertian_sphere_geom_vars[] = {
@@ -347,7 +355,6 @@ void TraceHost::init() {
     owlRayGenSet2i(owl.ray_gen, "pbo_size", config.width, config.height);
     owlRayGenSetGroup(owl.ray_gen, "world", world);
     owlRayGenSetBuffer(owl.ray_gen, "launch", state.launch_params_buffer);
-    update_launch_params();
 
     spdlog::info("Building programs, pipeline, and SBT");
     owlBuildPrograms(owl.ctx);
@@ -406,6 +413,18 @@ void TraceHost::increment_camera(CameraActions action, float speed) {
             state.camera.look_from -= forward * inc;
             state.camera.look_at -= forward * inc;
             break;
+        case CameraActions::RotateLeft:
+            state.camera.look_at -= right * inc;
+            break;
+        case CameraActions::RotateRight:
+            state.camera.look_at += right * inc;
+            break;
+        case CameraActions::RotateUp:
+            state.camera.look_at += state.camera.up * inc;
+            break;
+        case CameraActions::RotateDown:
+            state.camera.look_at -= state.camera.up * inc;
+            break;
     }
     state.launch_params.dirty = true;
 }
@@ -416,6 +435,16 @@ void TraceHost::resize_window(int width, int height) {
 }
 
 void TraceHost::update_launch_params() {
+    // Update spp
+    // ImGui::Text("Frames accumulated: %d", state.launch_params.frame.id);
+    ImGui::BeginChild("Launch Params");
+    ImGui::Text("Frame accumulated : %d", state.launch_params.frame.id);
+    ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", state.camera.look_from.x, state.camera.look_from.y, state.camera.look_from.z);
+    ImGui::Text("Camera Target: (%.2f, %.2f, %.2f)", state.camera.look_at.x, state.camera.look_at.y, state.camera.look_at.z);
+    ImGui::Text("Camera Up: (%.2f, %.2f, %.2f)", state.camera.up.x, state.camera.up.y, state.camera.up.z);
+    ImGui::Text("Aspect Ratio: %.2f", state.aspect);
+    ImGui::End();
+
     // Reflect host camera state
     vec3f camera_pos = state.camera.look_from;
     vec3f camera_d00 = normalize(state.camera.look_at - camera_pos);
@@ -434,31 +463,35 @@ void TraceHost::update_launch_params() {
 
     // Increment frame count
     if (state.launch_params.dirty) {
-        state.launch_params.frame.id = 1;
+        state.launch_params.frame.accum_frames= 1;
     }
     else {
-        state.launch_params.frame.id++;
+        state.launch_params.frame.accum_frames++;
     }
+    state.launch_params.frame.id++;
+
+    // Upload launch params
     owlBufferUpload(state.launch_params_buffer, &state.launch_params, 0);
     state.launch_params.dirty = false;
 }
 
 void TraceHost::launch() {
-    update_launch_params();
     owlRayGenLaunch2D(owl.ray_gen, config.width, config.height);
     cudaDeviceSynchronize();
 }
 
 void TraceHost::gl_draw() {
+    ImGui::Begin("Trace Kernel");
     auto current_time = std::chrono::high_resolution_clock::now();
     auto delta = current_time - prev_time;
     approx_delta = delta;
     prev_time = current_time;
 
+    update_launch_params();
+
     gl.shader->use();
     launch();
-
-    gl.shader->set_float("num_samples", static_cast<float>(state.launch_params.frame.id));
+    gl.shader->set_float("num_samples", static_cast<float>(state.launch_params.frame.accum_frames));
 
     // 1. Bind the texture
     glActiveTexture(GL_TEXTURE0);
@@ -478,4 +511,7 @@ void TraceHost::gl_draw() {
     glBindVertexArray(0);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    ImGui::End();
+
 }

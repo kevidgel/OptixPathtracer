@@ -3,6 +3,9 @@ project(OptixPathtracer)
 
 set(CMAKE_CXX_STANDARD 20)
 
+# Set preproccessor definitions
+#add_definitions(-D__CUDA_ARCH__)
+
 # Add packages (use vcpkg)
 find_package(TBB CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)

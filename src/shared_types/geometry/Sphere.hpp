@@ -4,11 +4,14 @@
 * @brief Host/device shared sphere definitions.
 */
 
+#pragma once
+
 #ifndef SPHERE_HPP
 #define SPHERE_HPP
 
 #include "Ray.hpp"
 #include "materials/Lambertian.hpp"
+
 using namespace owl;
 
 namespace Geometry {
@@ -72,9 +75,9 @@ namespace Geometry {
         inline __device__
         static void closest_hit() {
             const int prim_id = optixGetPrimitiveIndex();
-            const auto &self = owl::getProgramData<SpheresGeom>().prims[prim_id];
+            const auto& self = owl::getProgramData<SpheresGeom>().prims[prim_id];
 
-            Trace::PerRayData &prd = owl::getPRD<Trace::PerRayData>();
+            RayData::Record& prd = owl::getPRD<RayData::Record>();
 
             const vec3f ray_org = optixGetWorldRayOrigin();
             const vec3f ray_dir = optixGetWorldRayDirection();
@@ -82,7 +85,7 @@ namespace Geometry {
             const vec3f hit_point = ray_org + hit_t * ray_dir;
             const vec3f N = hit_point - to_world(self.sphere.center);
 
-            prd.out.scatter_event = Material::scatter(self.material, hit_point, N, prd) ? Trace::RayScattered : Trace::RayMissed;
+            prd.out.scatter_event = Material::scatter(self.material, hit_point, N, prd) ? RayData::RayScattered : RayData::RayMissed;
         }
 #endif
     };

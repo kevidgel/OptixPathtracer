@@ -2,30 +2,25 @@
 // Created by kevidgel on 10/20/24.
 //
 
-#ifndef APP_HPP
-#define APP_HPP
+#pragma once
 
-#include <memory>
+#ifndef RENDERBASE_HPP
+#define RENDERBASE_HPP
+#define GLFW_INCLUDE_NONE
 
-#include "ShaderProgram.hpp"
-
-#include <cuda_runtime.h>
-#include <unordered_map>
 #include <GLFW/glfw3.h>
-#include <owl/owl.h>
-#include <vector>
 
 #include "TraceHost.hpp"
 
 class RenderBase {
 public:
     struct Config {
-        const int window_width = 1280;
-        const int window_height = 720;
+        int window_width = 1280;
+        int window_height = 720;
+        std::optional<const char*> model;
     } config;
 
     RenderBase(const Config& config);
-    RenderBase();
     ~RenderBase();
 
     void run();
@@ -47,4 +42,4 @@ private:
 
 
 
-#endif //APP_HPP
+#endif //RENDERBASE_HPP

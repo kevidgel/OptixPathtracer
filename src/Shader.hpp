@@ -2,19 +2,21 @@
 // Created by kevidgel on 10/22/24.
 //
 
-#ifndef SHADERPROGRAM_HPP
-#define SHADERPROGRAM_HPP
+#pragma once
+
+#ifndef SHADER_HPP
+#define SHADER_HPP
 
 #include <glad/glad.h>
 #include <string>
 
-class ShaderProgram {
+class Shader {
 public:
   // Program ID
   GLuint program_id;
 
-  ShaderProgram(const char* vertex_shader_source, const char* fragment_shader_source);
-  ~ShaderProgram();
+  Shader(const char* vertex_shader_source, const char* fragment_shader_source);
+  ~Shader();
 
   void use();
 
@@ -25,4 +27,4 @@ public:
 
 
 
-#endif //SHADERPROGRAM_HPP
+#endif //SHADER_HPP
