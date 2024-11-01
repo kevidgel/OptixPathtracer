@@ -14,13 +14,14 @@ However, using OpenGL + OptiX allows us to achieve near-realtime levels of perfo
 - [x] GLFW + GLAD for rendering base
 - [x] OptiX + OpenGL interop using pixel buffer unpacking
 - [x] Basic raytracing in one weekend impl with rotating camera
+- [x] User input to move camera + sample accumulation when camera is still.
+- [x] Minor performance improvements with: russian roulette,
 
 ## TODO
-
+- [ ] Figure out a way to load models (either by mapping OpenGL vbos to CUDA buffers, or using CUDA buffers directly).
+- [ ] Textures (as opposed to hardcoded colors per prim)
+- [ ] Specular materials
 - [ ] Environment mapping
-- [ ] Textures
-- [ ] Figure out a way to load models (either by mapping OpenGL vbos to CUDA buffers, or using CUDA buffers directly). 
-- [ ] User input to move camera + sample accumulation when camera is still.
 - [ ] Importance sampling, better materials, MIS, ...
 
 In the distant future:
