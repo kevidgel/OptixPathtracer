@@ -2,6 +2,7 @@
 
 #include <owl/owl.h>
 #include <owl/common/math/vec.h>
+#include <cuda_runtime.h>
 
 using namespace owl;
 
@@ -58,6 +59,6 @@ struct RayGenData {
 };
 
 struct MissProgData {
-    /*! background color */
-    vec3f bg_color;
+    /*! env_map */
+    cudaTextureObject_t env_map;
 };

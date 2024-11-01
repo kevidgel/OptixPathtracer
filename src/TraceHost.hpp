@@ -32,7 +32,8 @@ class TraceHost {
 public:
     struct Config {
         const char* ptx_source;
-        std::optional<const char*> model;
+        std::optional<std::string> model;
+        std::optional<std::string> env_map;
         const int width;
         const int height;
     };
@@ -85,6 +86,7 @@ private:
         OWLContext ctx;
         OWLModule module;
         OWLRayGen ray_gen;
+        OWLMissProg miss_prog;
         OWLLaunchParams launch_params;
     } owl;
     /* State of the pathtracer */

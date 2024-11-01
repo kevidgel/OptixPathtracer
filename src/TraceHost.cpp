@@ -13,6 +13,7 @@
 #include <optional>
 #include <vector>
 #include <loaders/ObjLoader.hpp>
+#include <loaders/ImageLoader.hpp>
 #include <spdlog/spdlog.h>
 
 #include "Shader.hpp"
@@ -234,6 +235,8 @@ void TraceHost::init() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    /********** OWL/GL **********/
+
     // Create pbo
     glGenBuffers(1, &gl.pbo);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, gl.pbo);
@@ -262,8 +265,6 @@ void TraceHost::init() {
 
     // Create context + module
     owl.ctx = owlContextCreate(nullptr, 1);
-
-
     owl.module = owlModuleCreate(owl.ctx, reinterpret_cast<const char *>(ShaderSources::trace_ptx_source));
 
     // Set sphere type
@@ -304,11 +305,11 @@ void TraceHost::init() {
 
     // Create miss program
     OWLVarDecl miss_prog_vars[] = {
-        {"bg_color", OWL_FLOAT3, OWL_OFFSETOF(MissProgData, bg_color)},
+        {"env_map", OWL_TEXTURE, OWL_OFFSETOF(MissProgData, env_map)},
         { nullptr }
     };
 
-    OWLMissProg miss_prog = owlMissProgCreate(
+    owl.miss_prog = owlMissProgCreate(
         owl.ctx,
         owl.module,
         "Miss",
@@ -317,7 +318,12 @@ void TraceHost::init() {
         -1
     );
 
-    owlMissProgSet3f(miss_prog, "bg_color", 0.1f, 0.1f, 0.6f);
+    ImageLoader image_loader({true, false});
+    OWLTexture env_map = image_loader.load_image_owl(config.env_map.value(), owl.ctx);
+    if (env_map == 0) {
+        throw std::runtime_error("Failed to load environment map");
+    }
+    owlMissProgSetTexture(owl.miss_prog, "env_map", env_map);
 
     // Create ray generation program
     OWLVarDecl ray_gen_vars[] = {
@@ -341,17 +347,16 @@ void TraceHost::init() {
         );
 
     // Register PBO with CUDA
-    cudaError_t result = cudaGraphicsGLRegisterBuffer(&state.cuda_pbo, gl.pbo, cudaGraphicsMapFlagsNone);
-    if (result != cudaSuccess) {
+    if (cudaGraphicsGLRegisterBuffer(&state.cuda_pbo, gl.pbo, cudaGraphicsMapFlagsNone) != cudaSuccess) {
         throw std::runtime_error("Failed to register PBO with CUDA");
     }
 
-    void *dev_ptr;
-    size_t size;
+    void *dev_pbo_ptr;
+    size_t dev_pbo_size;
     cudaGraphicsMapResources(1, &state.cuda_pbo, 0);
-    cudaGraphicsResourceGetMappedPointer(&dev_ptr, &size, state.cuda_pbo);
+    cudaGraphicsResourceGetMappedPointer(&dev_pbo_ptr, &dev_pbo_size, state.cuda_pbo);
 
-    owlRayGenSetPointer(owl.ray_gen, "pbo_ptr", dev_ptr);
+    owlRayGenSetPointer(owl.ray_gen, "pbo_ptr", dev_pbo_ptr);
     owlRayGenSet2i(owl.ray_gen, "pbo_size", config.width, config.height);
     owlRayGenSetGroup(owl.ray_gen, "world", world);
     owlRayGenSetBuffer(owl.ray_gen, "launch", state.launch_params_buffer);

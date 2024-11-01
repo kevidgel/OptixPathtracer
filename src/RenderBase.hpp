@@ -17,7 +17,8 @@ public:
     struct Config {
         int window_width = 1280;
         int window_height = 720;
-        std::optional<const char*> model;
+        std::optional<std::string> model;
+        std::optional<std::string> env_map;
     } config;
 
     RenderBase(const Config& config);

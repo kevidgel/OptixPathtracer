@@ -15,6 +15,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(Freetype CONFIG REQUIRED)
 find_package(Fontconfig REQUIRED)
+find_package(Stb REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(deps)

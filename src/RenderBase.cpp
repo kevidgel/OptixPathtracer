@@ -140,6 +140,7 @@ void RenderBase::init_programs() {
     optix = new TraceHost({
         "shaders/CMakeFiles/TracePtx.dir/Trace.ptx",
         config.model,
+        config.env_map,
         config.window_width,
         config.window_height,
     });

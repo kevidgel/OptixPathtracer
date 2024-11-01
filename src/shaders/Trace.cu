@@ -36,7 +36,7 @@ vec3f trace_path(const RayGenData& self, Ray& ray, RayData::Record& prd) {
 
         if (prd.out.scatter_event == RayData::ScatterEvent::RayMissed) {
             // Missed the scene, return background color
-            return accum_attenuation * miss_color(ray);
+            return accum_attenuation * prd.out.attenuation;
         }
         else if (prd.out.scatter_event == RayData::ScatterEvent::RayCancelled) {
             // Hit light source
@@ -55,8 +55,7 @@ vec3f trace_path(const RayGenData& self, Ray& ray, RayData::Record& prd) {
                 return vec3f(0.f);
             }
 
-            vec3f L_o = brdf / pdf;
-            accum_attenuation *= (L_o / (1.0f - roulette_weight));
+            accum_attenuation *= (throughput / (1.0f - roulette_weight));
 
             ray = Ray(
                 prd.out.scattered_origin,
@@ -123,7 +122,22 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
 // }
 
 OPTIX_MISS_PROGRAM(Miss)() {
-    const MissProgData& self = owl::getProgramData<MissProgData>();
+    const MissProgData &self = owl::getProgramData<MissProgData>();
+    vec3f dir = optixGetWorldRayDirection();
+    dir = normalize(dir);
+
+    // Convert to spherical coords
+    const float theta = atan2f(dir.z, dir.x);
+    const float phi = acosf(dir.y);
+
+    // Convert to texture coordinates
+    const float u = theta / (2.0f * M_PIf) + 0.5f;
+    const float v = phi / M_PIf;
+
+    // Retrieve environment map color
+    const vec4f bg_color = tex2D<float4>(self.env_map, u, v);
+
     RayData::Record& prd = owl::getPRD<RayData::Record>();
     prd.out.scatter_event = RayData::ScatterEvent::RayMissed;
+    prd.out.attenuation = vec3f(bg_color.x, bg_color.y, bg_color.z);
 }

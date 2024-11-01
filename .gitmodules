@@ -4,3 +4,6 @@
 [submodule "deps/rapidobj"]
 	path = deps/rapidobj
 	url = https://github.com/guybrush77/rapidobj.git
+[submodule "deps/argparse"]
+	path = deps/argparse
+	url = https://github.com/p-ranav/argparse.git
