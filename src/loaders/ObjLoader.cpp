@@ -17,12 +17,12 @@ ObjLoader::~ObjLoader() {
 bool ObjLoader::load(const std::string& filename) {
     spdlog::info("ObjLoader: Loading OBJ file: {}", filename);
     obj::Result res = obj::ParseFile(filename);
-
     if (res.error) {
         spdlog::error("ObjLoader: Failed to load OBJ file: {}", res.error.code.message());
         return false;
     }
 
+    // Triangulate it
     if (!Triangulate(res)) {
         spdlog::error("ObjLoader: Failed to triangulate OBJ file: {}", filename);
         return false;
@@ -57,23 +57,6 @@ bool ObjLoader::load(const std::string& filename) {
                 );
             }
         }
-    }
-
-    return true; // Placeholder return value
-}
-
-bool ObjLoader::load_to_owl_buffer(const std::string& filename) {
-    spdlog::info("ObjLoader: Loading OBJ file: {}", filename);
-    obj::Result res = obj::ParseFile(filename);
-
-    if (res.error) {
-        spdlog::error("ObjLoader: Failed to load OBJ file: {}", res.error.code.message());
-        return false;
-    }
-
-    if (!Triangulate(res)) {
-        spdlog::error("ObjLoader: Failed to triangulate OBJ file: {}", filename);
-        return false;
     }
 
     return true;

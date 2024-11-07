@@ -20,7 +20,7 @@ target_link_libraries(
 )
 target_include_directories(TracePtx
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../shared_types
+        ${CMAKE_CURRENT_SOURCE_DIR}/../scene
 )
 set_target_properties(TracePtx
         PROPERTIES

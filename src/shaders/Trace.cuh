@@ -6,15 +6,6 @@
 
 using namespace owl;
 
-struct TrianglesGeomData {
-    /*! index buffer */
-    vec3i* index;
-    /*! vertex buffer */
-    vec3f* vertex;
-    /*! base color */
-    vec3f color;
-};
-
 /**
 * @brief Launch parameters
 * @details This struct holds the camera parameters and frame information.
@@ -49,11 +40,18 @@ struct LaunchParams {
 
 struct RayGenData {
     /*! pixel buffer (created in gl context) */
-    vec4f *pbo_ptr;
+    vec4f* pbo_ptr;
     /*! dims of pixel buffer */
-    vec2i  pbo_size;
+    vec2i pbo_size;
     /*! world handle */
     OptixTraversableHandle world;
+    /*! env map alias table */
+    struct EnvMapAliasTable {
+        float* pdf;
+        float* alias_pdf;
+        int* alias_i;
+        uint2 size;
+    } env;
     /*! launch parameters in ubo */
     LaunchParams* launch;
 };

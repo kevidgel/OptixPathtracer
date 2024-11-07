@@ -81,18 +81,6 @@ std::optional<GLuint> load_spirv_shader_from_str(GLenum shader_type, const char 
 }
 
 Shader::Shader(const char* vertex_shader_source, const char* fragment_shader_source) {
-    // Compile shaders and link program
-    // auto vertex_shader_res = load_spirv_shader(GL_VERTEX_SHADER, vertex_shader_source);
-    // if (!vertex_shader_res.has_value()) {
-    //     throw std::runtime_error("Failed to load vertex shader");
-    // }
-    // GLuint vertex_shader = vertex_shader_res.value();
-    //
-    // auto fragment_shader_res = load_spirv_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
-    // if (!fragment_shader_res.has_value()) {
-    //     throw std::runtime_error("Failed to load fragment shader");
-    // }
-    // GLuint fragment_shader = fragment_shader_res.value();
     GLuint vertex_shader, fragment_shader;
     int success;
     char info_log[512];

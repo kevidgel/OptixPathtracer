@@ -12,10 +12,10 @@ file(GLOB HEADERS
         "TraceHost.hpp"
         "loaders/*.hpp"
 )
-file(GLOB TYPE_HEADERS
-        "shared_types/geometry/*.hpp"
-        "shared_types/materials/*.hpp"
-        "shared_types/*.hpp"
+file(GLOB SCENE_HEADERS
+        "scene/geometry/*.hpp"
+        "scene/materials/*.hpp"
+        "scene/*.hpp"
 )
 
 # Provides SHADER_SOURCES
@@ -42,7 +42,7 @@ set_target_properties(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/shared_types
+        ${CMAKE_CURRENT_SOURCE_DIR}/scene
             ${CMAKE_CURRENT_BINARY_DIR}/generated
             ${Stb_INCLUDE_DIR}
 )

@@ -13,7 +13,7 @@
 #ifdef __CUDA_ARCH__
 using namespace owl;
 
-namespace RayData {
+namespace Trace {
     typedef LCG<8> Random;
 
     typedef enum {
@@ -29,6 +29,7 @@ namespace RayData {
             vec3f scattered_origin;
             vec3f scattered_direction;
             vec3f attenuation;
+            vec3f normal;
             float pdf;
         } out;
     };

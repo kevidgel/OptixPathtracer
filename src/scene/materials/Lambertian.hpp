@@ -13,7 +13,7 @@
 #include <owl/common/math/AffineSpace.h>
 #include <owl/common/math/random.h>
 
-#include "Ray.hpp"
+#include "trace/Ray.hpp"
 
 using namespace owl;
 
@@ -51,7 +51,7 @@ namespace Material {
         static bool scatter(const Lambertian &material,
                             const vec3f &P,
                             vec3f N,
-                            RayData::Record &prd
+                            Trace::Record &prd
         ) {
             const vec3f W_o = optixGetWorldRayDirection();
 
@@ -75,6 +75,7 @@ namespace Material {
             prd.out.scattered_origin = P;
             prd.out.scattered_direction = W_i;
             prd.out.attenuation = (material.albedo / (M_PIf)) * w_i.y;
+            prd.out.normal = N;
             prd.out.pdf = w_i.y / M_PIf;
             return true;
         }

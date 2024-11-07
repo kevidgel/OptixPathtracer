@@ -133,6 +133,7 @@ void RenderBase::init_glfw() {
     glDebugMessageCallback(debug_callback, nullptr);
 
     glEnable(GL_FRAMEBUFFER_SRGB);
+    glfwSwapInterval(0);
 }
 
 void RenderBase::init_programs() {
@@ -236,7 +237,7 @@ void RenderBase::render_loop() {
         float window_width = ImGui::GetWindowWidth();;
         float text_width = ImGui::CalcTextSize(fps.c_str()).x;
         ImGui::SameLine(window_width - 10 - text_width);
-        ImGui::Text(fps.c_str());
+        ImGui::Text("%s", fps.c_str());
         ImGui::EndMainMenuBar();
 
         // Input

@@ -28,7 +28,6 @@ public:
     ~ObjLoader();
 
     bool load(const std::string& filename);
-    bool load_to_owl_buffer(const std::string& filename);
     void clear();
 private:
     Config config;

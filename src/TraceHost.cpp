@@ -2,6 +2,7 @@
 // Created by kevidgel on 10/22/24.
 //
 
+// DON'T MOVE HEADERS
 #include "TraceHost.hpp"
 #include "shaders/Trace.cuh"
 
@@ -19,6 +20,24 @@
 #include "Shader.hpp"
 #include "geometry/Sphere.hpp"
 #include "Trace.ptx.hpp"
+
+template<typename T>
+void mapBufferToDevice(T* hostBuffer, size_t size, void** deviceBuffer) {
+    // Allocate memory on the device
+    cudaError_t err = cudaMalloc((void**)deviceBuffer, size * sizeof(T));
+    if (err != cudaSuccess) {
+        spdlog::error("Failed to allocate device memory: {}", cudaGetErrorString(err));
+        return;
+    }
+
+    // Copy data from host to device
+    err = cudaMemcpy(*deviceBuffer, hostBuffer, size * sizeof(T), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        spdlog::error("Failed to copy data to device: {}", cudaGetErrorString(err));
+        cudaFree(*deviceBuffer);
+        return;
+    }
+}
 
 namespace Screen {
     const int NUM_VERTICES = 8;
@@ -128,6 +147,10 @@ TraceHost::~TraceHost() {
     delete gl.shader;
 }
 
+/*
+ * Currently this is a mega function that initializes the scene, OpenGL, and OptiX.
+ * TODO: I want to break this function up into smaller functions that are easier to understand.
+ */
 void TraceHost::init() {
     // Start time
     prev_time = std::chrono::high_resolution_clock::now();
@@ -318,18 +341,36 @@ void TraceHost::init() {
         -1
     );
 
-    ImageLoader image_loader({true, false});
+    // Load environment map
+    ImageLoader::Config image_loader_config;
+    image_loader_config.cache = true;
+    ImageLoader image_loader(image_loader_config);
     OWLTexture env_map = image_loader.load_image_owl(config.env_map.value(), owl.ctx);
     if (env_map == 0) {
         throw std::runtime_error("Failed to load environment map");
     }
     owlMissProgSetTexture(owl.miss_prog, "env_map", env_map);
 
+    // Build alias table
+    ImageLoader::AliasResult alias = image_loader.build_alias(config.env_map.value(), owl.ctx);
+    if (!alias.has_value()) {
+        throw std::runtime_error("Failed to build alias table");
+    }
+    void *dev_alias_pdf_ptr, *dev_alias_i_ptr, *dev_pdf_ptr;
+    spdlog::info("Mapping alias table to device of size {}", alias->size.first * alias->size.second);
+    mapBufferToDevice(alias->pdf.get(), alias->size.first * alias->size.second, &dev_pdf_ptr);
+    mapBufferToDevice(alias->alias_pdf.get(), alias->size.first * alias->size.second, &dev_alias_pdf_ptr);
+    mapBufferToDevice(alias->alias_i.get(), alias->size.first * alias->size.second, &dev_alias_i_ptr);
+
     // Create ray generation program
     OWLVarDecl ray_gen_vars[] = {
         {"pbo_ptr", OWL_RAW_POINTER, OWL_OFFSETOF(RayGenData, pbo_ptr)},
         {"pbo_size", OWL_INT2, OWL_OFFSETOF(RayGenData, pbo_size)},
         {"world", OWL_GROUP, OWL_OFFSETOF(RayGenData, world)},
+        {"env.pdf", OWL_RAW_POINTER, OWL_OFFSETOF(RayGenData, env.pdf)},
+        {"env.alias_pdf", OWL_RAW_POINTER, OWL_OFFSETOF(RayGenData, env.alias_pdf)},
+        {"env.alias_i", OWL_RAW_POINTER, OWL_OFFSETOF(RayGenData, env.alias_i)},
+        {"env.size", OWL_UINT2, OWL_OFFSETOF(RayGenData, env.size)},
         {"launch", OWL_BUFPTR, OWL_OFFSETOF(RayGenData, launch)},
         { nullptr }
     };
@@ -359,6 +400,10 @@ void TraceHost::init() {
     owlRayGenSetPointer(owl.ray_gen, "pbo_ptr", dev_pbo_ptr);
     owlRayGenSet2i(owl.ray_gen, "pbo_size", config.width, config.height);
     owlRayGenSetGroup(owl.ray_gen, "world", world);
+    owlRayGenSetPointer(owl.ray_gen, "env.pdf", dev_pdf_ptr);
+    owlRayGenSetPointer(owl.ray_gen, "env.alias_pdf", dev_alias_pdf_ptr);
+    owlRayGenSetPointer(owl.ray_gen, "env.alias_i", dev_alias_i_ptr);
+    owlRayGenSet2ui(owl.ray_gen, "env.size", alias->size.first, alias->size.second);
     owlRayGenSetBuffer(owl.ray_gen, "launch", state.launch_params_buffer);
 
     spdlog::info("Building programs, pipeline, and SBT");
@@ -443,7 +488,7 @@ void TraceHost::update_launch_params() {
     // Update spp
     // ImGui::Text("Frames accumulated: %d", state.launch_params.frame.id);
     ImGui::BeginChild("Launch Params");
-    ImGui::Text("Frame accumulated : %d", state.launch_params.frame.id);
+    ImGui::Text("Frames accumulated : %d", state.launch_params.frame.accum_frames);
     ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", state.camera.look_from.x, state.camera.look_from.y, state.camera.look_from.z);
     ImGui::Text("Camera Target: (%.2f, %.2f, %.2f)", state.camera.look_at.x, state.camera.look_at.y, state.camera.look_at.z);
     ImGui::Text("Camera Up: (%.2f, %.2f, %.2f)", state.camera.up.x, state.camera.up.y, state.camera.up.z);

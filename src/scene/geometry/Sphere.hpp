@@ -9,7 +9,7 @@
 #ifndef SPHERE_HPP
 #define SPHERE_HPP
 
-#include "Ray.hpp"
+#include "trace/Ray.hpp"
 #include "materials/Lambertian.hpp"
 
 using namespace owl;
@@ -77,7 +77,7 @@ namespace Geometry {
             const int prim_id = optixGetPrimitiveIndex();
             const auto& self = owl::getProgramData<SpheresGeom>().prims[prim_id];
 
-            RayData::Record& prd = owl::getPRD<RayData::Record>();
+            Trace::Record& prd = owl::getPRD<Trace::Record>();
 
             const vec3f ray_org = optixGetWorldRayOrigin();
             const vec3f ray_dir = optixGetWorldRayDirection();
@@ -85,7 +85,7 @@ namespace Geometry {
             const vec3f hit_point = ray_org + hit_t * ray_dir;
             const vec3f N = hit_point - to_world(self.sphere.center);
 
-            prd.out.scatter_event = Material::scatter(self.material, hit_point, N, prd) ? RayData::RayScattered : RayData::RayMissed;
+            prd.out.scatter_event = Material::scatter(self.material, hit_point, N, prd) ? Trace::RayScattered : Trace::RayMissed;
         }
 #endif
     };

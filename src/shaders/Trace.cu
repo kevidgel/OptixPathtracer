@@ -1,5 +1,5 @@
 #include "Trace.cuh"
-#include "Ray.hpp"
+#include "trace/Ray.hpp"
 #include "geometry/Sphere.hpp"
 
 #include <optix_device.h>
@@ -28,23 +28,90 @@ vec3f miss_color(const Ray& ray) {
 }
 
 inline __device__
-vec3f trace_path(const RayGenData& self, Ray& ray, RayData::Record& prd) {
+int sample_env_discrete(const RayGenData& self, Trace::Record& prd) {
+    const int size = self.env.size.x * self.env.size.y;
+    const float float_idx = prd.random() * size;
+    const int idx = static_cast<float>(float_idx);
+    float remainder = float_idx - idx;
+
+    if (remainder < self.env.alias_pdf[idx]) {
+        prd.out.pdf = self.env.pdf[idx];
+        return idx;
+    } else {
+        const int alias = self.env.alias_i[idx];
+        prd.out.pdf = self.env.pdf[alias];
+        return alias;
+    }
+}
+
+inline __device__
+vec3f sample_env_ray(const RayGenData& self, Trace::Record& prd) {
+    int idx = sample_env_discrete(self, prd);
+
+    int y = idx / self.env.size.x;
+    int x = idx % self.env.size.x;
+
+    // Convert to 2d texture coordinates
+    const float u = (x + 0.5) / self.env.size.x;
+    const float v = (y + 0.5) / self.env.size.y;
+
+    // Convert to spherical
+    const float theta = 2.0f * M_PIf * (u - 0.5f);
+    const float phi = M_PIf * v;
+
+    // Convert to cartesian
+    const float ray_x = cosf(theta) * sinf(phi);
+    const float ray_y = cosf(phi);
+    const float ray_z = sinf(theta) * sinf(phi);
+
+    return vec3f(ray_x, ray_y, ray_z);
+}
+
+inline __device__
+float get_env_pdf(const RayGenData& self, const vec3f& dir, Trace::Record& prd) {
+    // Convert to spherical coords
+    const float theta = atan2f(dir.z, dir.x);
+    const float phi = acosf(dir.y);
+
+    // Convert to texture coordinates
+    const float u = theta / (2.0f * M_PIf) + 0.5f;
+    const float v = phi / M_PIf;
+
+    // printf("u: %f, v: %f\n", u, v);
+
+    // Convert to index in pdf table
+    const int x = static_cast<int>(u * self.env.size.x);
+    const int y = static_cast<int>(v * self.env.size.y);
+    const int idx = y * self.env.size.x + x;
+
+    // Get pdf
+    return self.env.pdf[idx];
+}
+
+inline __device__
+vec3f trace_path(const RayGenData& self, Ray& ray, Trace::Record& prd) {
     vec3f accum_attenuation = 1.f;
 
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         traceRay(self.world, ray, prd);
 
-        if (prd.out.scatter_event == RayData::ScatterEvent::RayMissed) {
+        if (prd.out.scatter_event == Trace::ScatterEvent::RayMissed) {
             // Missed the scene, return background color
             return accum_attenuation * prd.out.attenuation;
         }
-        else if (prd.out.scatter_event == RayData::ScatterEvent::RayCancelled) {
+        else if (prd.out.scatter_event == Trace::ScatterEvent::RayCancelled) {
             // Hit light source
             return vec3f(0.f);
         }
         else {
-            const float pdf = prd.out.pdf;
             const vec3f brdf = prd.out.attenuation;
+            const vec3f dir = prd.out.scattered_direction;
+            const float pdf = (dot(normalize(prd.out.normal), normalize(dir)) / M_PIf);
+
+            // TODO: I want this to be the pdf of the env map
+            // const vec3f env_dir = sample_env_ray(self,prd);
+            // const float env_pdf = get_env_pdf(self, dir, prd);
+            // printf("pdf: %f %f\n", prd.out.pdf, env_pdf);
 
             const vec3f throughput = brdf / pdf;
             float roulette_weight =
@@ -59,10 +126,10 @@ vec3f trace_path(const RayGenData& self, Ray& ray, RayData::Record& prd) {
 
             ray = Ray(
                 prd.out.scattered_origin,
-                prd.out.scattered_direction,
+                dir,
                 1e-3f,
                 1e10f
-                );
+            );
         }
     }
 
@@ -76,7 +143,7 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
     const int pboOfs = pixel_id.x + self.pbo_size.x * pixel_id.y;
 
     // Build primary rays
-    RayData::Record prd;
+    Trace::Record prd;
     prd.random.init(pboOfs, self.launch->frame.id);
 
     vec3f color = 0.f;
@@ -95,6 +162,7 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
         ray.direction = normalize(direction);
 
         // Trace
+        prd.out.pdf = 1.f;
         color += trace_path(self, ray, prd);
     }
 
@@ -137,7 +205,7 @@ OPTIX_MISS_PROGRAM(Miss)() {
     // Retrieve environment map color
     const vec4f bg_color = tex2D<float4>(self.env_map, u, v);
 
-    RayData::Record& prd = owl::getPRD<RayData::Record>();
-    prd.out.scatter_event = RayData::ScatterEvent::RayMissed;
+    Trace::Record& prd = owl::getPRD<Trace::Record>();
+    prd.out.scatter_event = Trace::ScatterEvent::RayMissed;
     prd.out.attenuation = vec3f(bg_color.x, bg_color.y, bg_color.z);
 }

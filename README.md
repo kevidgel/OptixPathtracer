@@ -14,14 +14,15 @@ However, using OpenGL + OptiX allows us to achieve near-realtime levels of perfo
 - [x] GLFW + GLAD for rendering base
 - [x] OptiX + OpenGL interop using pixel buffer unpacking
 - [x] Basic raytracing in one weekend impl with rotating camera
-- [x] User input to move camera + sample accumulation when camera is still.
-- [x] Minor performance improvements with: russian roulette,
+- [x] User input to move camera + sample accumulation when camera is still
+- [x] Performance improvements with: russian roulette
+- [x] Environment mapping
 
 ## TODO
-- [ ] Figure out a way to load models (either by mapping OpenGL vbos to CUDA buffers, or using CUDA buffers directly).
+- [ ] Loading models with textures
+- [ ] Importance sampling environment maps
 - [ ] Textures (as opposed to hardcoded colors per prim)
 - [ ] Specular materials
-- [ ] Environment mapping
 - [ ] Importance sampling, better materials, MIS, ...
 
 In the distant future:
@@ -51,24 +52,38 @@ make # or ninja
 To run:
 ```bash
 cd $PROJECT_BUILD_PATH/src # This is where the executable is stored
-./renderer
+./renderer 
+--model-path <path to obj>
+--env-map <path to hdr>
 
 # NOTE: On devices with NVIDIA Optimus (two devices), OpenGL might use the non-NVIDIA gpu. To fix (at least on Linux)
-__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./renderer
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./renderer ...
 ```
+## Controls
+Use WASD to move around the xz plane.
+Use SPACE and LSHIFT to move up and down.
+Use arrow keys to look around.
 
 ## Dependencies
 System with OpenGL 4.6 capability. I use `glfw` + `glad`.
 
-I use vcpkg for most of my dependencies. Provide vcpkg toolchain file as `-DCMAKE_TOOLCHAIN_FILE` to cmake if needed. They are located in `/vcpkg.json`
-
-Make sure to have CUDA Toolkit version 12.6 installed. 
+Make sure to have CUDA Toolkit version 12.6 installed.
 You might run into issues with CMake, and may need to specify `-DCMAKE_CUDA_ARCHITECTURES` and `-DCMAKE_CUDA_COMPILER`.
 
 Make sure to have OptiX 7.7 installed. Provide installation path as `-DOptiX_ROOT_DIR` if needed.
 You NEED an NVIDIA GPU that supports this version of OptiX. You can install it here: https://developer.nvidia.com/designworks/optix/downloads/legacy.
 
-The only other dependency is OWL, which is an OptiX API wrapper. You can install it via `git submodule`.
+### vcpkg
+I use (prefer) vcpkg for most of my dependencies. Provide vcpkg toolchain file as `-DCMAKE_TOOLCHAIN_FILE` to cmake if needed. They are located in `/vcpkg.json`
+
+### git submodules
+I use:
+
+- `owl` for Optix 7.7 wrapper API.
+- `rapidobj` for obj loading.
+- `argparse` for command line argument parsing.
+
+You can install these via `git submodule`.
 
 ## Sources
 I used a lot of help.
