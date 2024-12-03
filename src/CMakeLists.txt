@@ -26,6 +26,8 @@ message(STATUS "SOURCES: ${SHADER_SOURCES}")
 # Add executable
 add_executable(${PROJECT_NAME}
         ${SOURCES}
+        ${HEADERS}
+        ${SCENE_HEADERS}
 )
 
 # Prebuild
@@ -42,7 +44,8 @@ set_target_properties(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/scene
+            ${CMAKE_CURRENT_SOURCE_DIR}/scene
+            ${CMAKE_CURRENT_SOURCE_DIR}/scene/*
             ${CMAKE_CURRENT_BINARY_DIR}/generated
             ${Stb_INCLUDE_DIR}
 )

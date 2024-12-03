@@ -17,6 +17,7 @@ However, using OpenGL + OptiX allows us to achieve near-realtime levels of perfo
 - [x] User input to move camera + sample accumulation when camera is still
 - [x] Performance improvements with: russian roulette
 - [x] Environment mapping
+- [x] Loading models
 
 ## TODO
 - [ ] Loading models with textures

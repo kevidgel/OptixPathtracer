@@ -4,8 +4,85 @@
 
 #include <optix_device.h>
 
-#define SAMPLES_PER_PIXEL 4
-#define MAX_DEPTH 16
+#include "geometry/TriangleMesh.hpp"
+
+#define SAMPLES_PER_PIXEL 2
+#define MAX_DEPTH 50
+
+/**
+ * @brief Y-up
+ */
+inline __device__
+vec3f random_in_cosine_weighted_hemisphere(LCG<8> &rng) {
+    const float r1 = rng();
+    const float r2 = rng();
+    float phi = 2.0f * M_PI * r1;
+    const float y = sqrtf(1.0f - r2);
+    const float x = cosf(phi) * sqrtf(r2);
+    const float z = sinf(phi) * sqrtf(r2);
+    return normalize(vec3f(x, y, z));
+}
+
+__device__
+static bool scatter(const vec3f diffuse,
+                    const vec3f &P,
+                    vec3f N,
+                    Trace::Record &prd
+) {
+    const vec3f W_o = optixGetWorldRayDirection();
+
+    // Flip
+    if (dot(N, W_o) > 0.0f) {
+        N = -N;
+    }
+    N = normalize(N);
+
+    // Create onb
+    const vec3f ref = N.y > 0.9999f ? vec3f(1, 0, 0) : vec3f(0, 1, 0);
+    const vec3f T = normalize(cross(ref, N));
+    const vec3f B = normalize(cross(N, T));
+
+    // T*x + N*y + B*z to convert local (x,y,z) to world
+    const vec3f w_i = random_in_cosine_weighted_hemisphere(prd.random);
+    const vec3f W_i = w_i.x * T + w_i.y * N + w_i.z * B;
+
+    // Update the record
+    // Note we include the cos(theta) term in the attenuation
+    prd.out.scattered_origin = P;
+    prd.out.scattered_direction = W_i;
+    prd.out.attenuation = (diffuse / (M_PIf)) * w_i.y;
+    prd.out.normal = N;
+    prd.out.pdf = w_i.y / M_PIf;
+    return true;
+}
+
+OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)() {
+    const auto& self = owl::getProgramData<Geometry::TriangleMesh>();
+    Trace::Record& prd = owl::getPRD<Trace::Record>();
+    // Ray data
+    const vec3f ray_org = optixGetWorldRayOrigin();
+    const vec3f ray_dir = optixGetWorldRayDirection();
+    const float hit_t = optixGetRayTmax();
+    const vec3f hit_point = ray_org + hit_t * ray_dir;
+    // Tri data
+    const int prim_id = optixGetPrimitiveIndex();
+    const vec3ui nindex = self.normal_indices[prim_id];
+    const vec3f& n0 = self.normals[nindex.x];
+    const vec3f& n1 = self.normals[nindex.y];
+    const vec3f& n2 = self.normals[nindex.z];
+    const vec2f bary = optixGetTriangleBarycentrics();
+    const vec3f N = normalize(bary.x * n0 + bary.y * n1 + (1.0f - bary.x - bary.y) * n2);
+    // Scatter
+    // const vec3ui tindex = self.texcoord_indices[prim_id];
+    // const vec2f& t0 = self.tex_coords[tindex.x];
+    // const vec2f& t1 = self.tex_coords[tindex.y];
+    // const vec2f& t2 = self.tex_coords[tindex.z];
+    // vec2f uv = bary.x * t0 + bary.y * t1 + (1.0f - bary.x - bary.y) * t2;
+    // uv.x = fmodf(uv.x, 1.0f);
+    // uv.y = fmodf(uv.y, 1.0f);
+    scatter({0.8, 0.8, 0.8}, hit_point, N, prd);
+    prd.out.scatter_event = Trace::ScatterEvent::RayScattered;
+}
 
 OPTIX_BOUNDS_PROGRAM(LambertianSpheres)(const void *geom_data, box3f &prim_bounds, const int prim_id) {
     Geometry::Sphere::bounds<Geometry::LambertianSpheresGeom>(geom_data, prim_bounds, prim_id);
@@ -27,19 +104,22 @@ vec3f miss_color(const Ray& ray) {
     return c;
 }
 
+// Currently just a cosine-weighted hemisphere
+inline __device__
+float bsdf_pdf(const vec3f& W_i, const vec3f& N) {
+    return max(0.0f, dot(W_i, N) / M_PIf);
+}
+
 inline __device__
 int sample_env_discrete(const RayGenData& self, Trace::Record& prd) {
     const int size = self.env.size.x * self.env.size.y;
-    const float float_idx = prd.random() * size;
-    const int idx = static_cast<float>(float_idx);
-    float remainder = float_idx - idx;
+    int idx = prd.random() * size;
+    idx = min(idx, size - 1);
 
-    if (remainder < self.env.alias_pdf[idx]) {
-        prd.out.pdf = self.env.pdf[idx];
+    if (prd.random() < self.env.alias_pdf[idx]) {
         return idx;
     } else {
         const int alias = self.env.alias_i[idx];
-        prd.out.pdf = self.env.pdf[alias];
         return alias;
     }
 }
@@ -77,15 +157,25 @@ float get_env_pdf(const RayGenData& self, const vec3f& dir, Trace::Record& prd) 
     const float u = theta / (2.0f * M_PIf) + 0.5f;
     const float v = phi / M_PIf;
 
-    // printf("u: %f, v: %f\n", u, v);
-
     // Convert to index in pdf table
     const int x = static_cast<int>(u * self.env.size.x);
     const int y = static_cast<int>(v * self.env.size.y);
-    const int idx = y * self.env.size.x + x;
+    int idx = y * self.env.size.x + x;
+    idx = min(idx, self.env.size.x * self.env.size.y - 1);
 
     // Get pdf
     return self.env.pdf[idx];
+}
+
+inline __device__
+bool traceShadowRay(vec3f origin, vec3f direction, Trace::Record& prd) {
+    const float tmin = 1e-3f;
+    const float tmax = 1e10f;
+    Ray ray(origin, direction, tmin, tmax);
+    prd.out.scatter_event = Trace::ScatterEvent::RayMissed;
+    traceRay(owl::getProgramData<RayGenData>().world, ray, prd);
+    // True if missed
+    return prd.out.scatter_event != Trace::ScatterEvent::RayScattered;
 }
 
 inline __device__
@@ -95,42 +185,39 @@ vec3f trace_path(const RayGenData& self, Ray& ray, Trace::Record& prd) {
     for (int depth = 0; depth < MAX_DEPTH; depth++) {
         traceRay(self.world, ray, prd);
 
+        // BG
         if (prd.out.scatter_event == Trace::ScatterEvent::RayMissed) {
             // Missed the scene, return background color
             return accum_attenuation * prd.out.attenuation;
         }
-        else if (prd.out.scatter_event == Trace::ScatterEvent::RayCancelled) {
-            // Hit light source
+
+        // Light (not implemented)
+        if (prd.out.scatter_event == Trace::ScatterEvent::RayCancelled) {
             return vec3f(0.f);
         }
-        else {
-            const vec3f brdf = prd.out.attenuation;
-            const vec3f dir = prd.out.scattered_direction;
-            const float pdf = (dot(normalize(prd.out.normal), normalize(dir)) / M_PIf);
 
-            // TODO: I want this to be the pdf of the env map
-            // const vec3f env_dir = sample_env_ray(self,prd);
-            // const float env_pdf = get_env_pdf(self, dir, prd);
-            // printf("pdf: %f %f\n", prd.out.pdf, env_pdf);
+        const vec3f brdf = prd.out.attenuation;
+        vec3f dir = prd.out.scattered_direction;
+        const float pdf = bsdf_pdf(dir, prd.out.normal);
 
-            const vec3f throughput = brdf / pdf;
-            float roulette_weight =
-                1.0f - clamp(max(max(throughput.x, throughput.y), throughput.z), 0.0f, 1.0f);
-            if (depth <= 3) roulette_weight = 0.f;
+        const vec3f throughput = brdf / pdf;
+        float roulette_weight =
+            1.0f - clamp(max(max(throughput.x, throughput.y), throughput.z), 0.3f, 1.0f);
+        if (depth <= 3) roulette_weight = 0.f;
 
-            if (prd.random() < roulette_weight) {
-                return vec3f(0.f);
-            }
-
-            accum_attenuation *= (throughput / (1.0f - roulette_weight));
-
-            ray = Ray(
-                prd.out.scattered_origin,
-                dir,
-                1e-3f,
-                1e10f
-            );
+        if (prd.random() < roulette_weight) {
+            return vec3f(0.f);
         }
+
+        vec3f l = (throughput / (1.0f - roulette_weight));
+        accum_attenuation *= l;
+
+        ray = Ray(
+            prd.out.scattered_origin,
+            dir,
+            1e-3f,
+            1e10f
+        );
     }
 
     return vec3f(0.f);
@@ -166,28 +253,20 @@ OPTIX_RAYGEN_PROGRAM(RayGen)() {
         color += trace_path(self, ray, prd);
     }
 
+    if (isnan(color.x) || isnan(color.y) || isnan(color.z)) {
+        color = vec3f(0.f);
+    }
+
+    if (isinf(color.x) || isinf(color.y) || isinf(color.z)) {
+        color = vec3f(0.f);
+    }
+
     if (self.launch->dirty) {
         self.pbo_ptr[pboOfs] = vec4f(color * (1.f / SAMPLES_PER_PIXEL), 1.f);
     } else {
         self.pbo_ptr[pboOfs] += vec4f(color * (1.f / SAMPLES_PER_PIXEL), 1.f);
     }
 }
-
-// OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)() {
-//     vec3f& prd = owl::getPRD<vec3f>();
-//
-//     const TrianglesGeomData &self = owl::getProgramData<TrianglesGeomData>();
-//
-//     // Compute normal
-//     const int prim_id = optixGetPrimitiveIndex();
-//     const vec3i index = self.index[prim_id];
-//     const vec3f v0 = self.vertex[index.x];
-//     const vec3f v1 = self.vertex[index.y];
-//     const vec3f v2 = self.vertex[index.z];
-//     const vec3f n = normalize(cross(v1 - v0, v2 - v0));
-//
-//     const vec3f ray_dir = optixGetWorldRayDirection();
-// }
 
 OPTIX_MISS_PROGRAM(Miss)() {
     const MissProgData &self = owl::getProgramData<MissProgData>();

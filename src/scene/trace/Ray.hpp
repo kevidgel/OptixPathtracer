@@ -7,10 +7,8 @@
 #ifndef RAY_HPP
 #define RAY_HPP
 
-#include <owl/owl.h>
 #include <owl/common/math/random.h>
 
-#ifdef __CUDA_ARCH__
 using namespace owl;
 
 namespace Trace {
@@ -34,6 +32,5 @@ namespace Trace {
         } out;
     };
 }
-#endif
 
 #endif //RAY_HPP

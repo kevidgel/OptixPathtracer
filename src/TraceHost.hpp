@@ -29,6 +29,14 @@ inline vec3f rnd3f() {
 }
 
 class TraceHost {
+private:
+    struct EnvMapDevice {
+        OWLTexture env_map;
+        void* dev_alias_pdf_ptr;
+        void* dev_alias_i_ptr;
+        void* dev_pdf_ptr;
+        std::pair<uint32_t, uint32_t> size;
+    };
 public:
     struct Config {
         const char* ptx_source;
@@ -54,7 +62,12 @@ public:
     TraceHost(const Config& config);
     ~TraceHost();
 
+    void *init_gl();
+    void init_geom_progs();
     void init();
+
+    OWLGroup build_scene();
+    EnvMapDevice build_env_map();
 
     void resize_window(int width, int height);
     void increment_camera(CameraActions action, float delta);
@@ -63,8 +76,8 @@ public:
     void gl_draw();
     void launch();
 private:
-    /* Initial configuration */
     bool initialized = false;
+    /* Initial configuration */
     Config config;
     /* OpenGL state */
     struct GLState {
@@ -88,6 +101,10 @@ private:
         OWLRayGen ray_gen;
         OWLMissProg miss_prog;
         OWLLaunchParams launch_params;
+        struct {
+            OWLGeomType lambertian_sphere;
+            OWLGeomType tri_mesh;
+        } geom_type;
     } owl;
     /* State of the pathtracer */
     struct RenderState {
